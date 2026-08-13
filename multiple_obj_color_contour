@@ -1,0 +1,65 @@
+import cv2
+import numpy as np
+
+# LOAD IMAGE
+img = cv2.imread(r"C:\Users\DELL\Downloads\660481101645077566.jfif")
+
+# CHECK THE LOAD IMAGE
+if img is None:
+    raise FileNotFoundError("Image not loaded")
+
+print(f"Loaded: shape={img.shape}")
+
+# CONVERT TO HSV
+hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+# HSV RANGE FOR red
+lower_hsv = (0, 30, 30)
+upper_hsv = (10, 255, 255)
+
+# CREATE MASk 
+mask = cv2.inRange(hsv_img, lower_hsv, upper_hsv)
+
+
+# MORPHOLOGY: CLOSE first (fill highlight gaps/holes), then OPEN (kill small noise)
+kernel_open = np.ones((3, 3), np.uint8)
+kernel_close = np.ones((9, 9), np.uint8)
+
+mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close)
+mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open)
+
+
+# FIND CONTOUR 
+contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+print(f"Total contours: {len(contours)}")
+
+# FILTER BY AREA
+min_area = 2000
+filtered_contours = [c for c in contours if abs(cv2.contourArea(c)) >  min_area]
+print(f"Filtered contours: {len(filtered_contours)}")
+
+# DRAW ON A COPY so original is preserved
+output = img.copy()
+
+for c in filtered_contours:
+    x, y, w, h = cv2.boundingRect(c)
+    cv2.rectangle(output, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+cv2.putText(output, f"Count: {len(filtered_contours)}", (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+# SAVE RESULT
+cv2.imwrite("result.jpg", output)
+print("Saved result.jpg")
+
+# SHOW
+cv2.namedWindow('result', cv2.WINDOW_NORMAL)
+cv2.resizeWindow('result', 800, 800)
+cv2.imshow('result', output)
+cv2.waitKey(0)
+cv2.destroyAllWindows() 
+
+
+
+
+
